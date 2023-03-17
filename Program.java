@@ -1,132 +1,159 @@
 import java.util.Arrays;
-import java.util.stream.IntStream;
+import java.util.Scanner;
+import java.util.stream.Stream;
 
-interface SymbolIterator
+interface ItemPrinter
 {
-	boolean hasNext();
-	char next();
+	void print(String text);
 }
 
 interface Printer
 {
-	void print(char symbol);
+	ItemPrinter item();
 }
 
-interface Phone
+interface MenuItem
 {
-	SymbolIterator symbols();
+	boolean isName(String name);
 	void print(Printer printer);
+}
 
-	default boolean compare(Phone other)
+class FoodItem implements MenuItem
+{
+	private String name;
+	private float weight;
+	private int calories;
+	private int price;
+
+	public FoodItem(String name, float weight, int calories, int price)
 	{
-		SymbolIterator symbols = symbols();
-		SymbolIterator otherSymbols = other.symbols();
+		this.name = name;
+		this.weight = weight;
+		this.calories = calories;
+		this.price = price;
+	}
 
-		while(symbols.hasNext() && otherSymbols.hasNext())
+	@Override
+	public boolean isName(String name)
+	{
+		return name.equals(this.name);
+	}
+
+	@Override
+	public void print(Printer printer)
+	{
+		ItemPrinter item = printer.item();
+		item.print("Name : " + name);
+		item.print("Weight : " + weight);
+		item.print("Calories : " + calories);
+		item.print("Price : " + price);
+	}
+}
+
+class DrinkItem implements MenuItem
+{
+	private String name;
+	private float volume;
+	private int calories;
+	private int price;
+
+	public DrinkItem(String name, float volume, int calories, int price)
+	{
+		this.name = name;
+		this.volume = volume;
+		this.calories = calories;
+		this.price = price;
+	}
+
+	@Override
+	public boolean isName(String name)
+	{
+		return name.equals(this.name);
+	}
+
+	@Override
+	public void print(Printer printer)
+	{
+		ItemPrinter item = printer.item();
+		item.print("Name : " + name);
+		item.print("Volume : " + volume);
+		item.print("Calories : " + calories);
+		item.print("Price : " + price);
+	}
+}
+
+class MusicItem implements MenuItem
+{
+	public MusicItem(String name, String author, float length)
+	{
+		this.name = name;
+		this.author = author;
+		this.length = length;
+	}
+
+	private String name;
+	private String author;
+	private float length;
+
+	@Override
+	public boolean isName(String name)
+	{
+		return name.equals(this.name);
+	}
+
+	@Override
+	public void print(Printer printer)
+	{
+		ItemPrinter item = printer.item();
+		item.print("Name : " + name);
+		item.print("Author : " + author);
+		item.print("Length : " + length + " min");
+	}
+}
+
+class SpecialMenu implements MenuItem
+{
+	private String name;
+	private MenuItem[] items;
+
+	public SpecialMenu(String name, MenuItem[] items)
+	{
+		this.name = name;
+		this.items = items;
+	}
+	@Override
+	public boolean isName(String name)
+	{
+		return name.equals(this.name);
+	}
+	@Override
+	public void print(Printer printer)
+	{
+		for(MenuItem item : items) item.print(printer);
+	}
+}
+
+class SeparatedMenu
+{
+	private MenuItem[] items;
+
+	public SeparatedMenu(MenuItem[] adults, MenuItem[] children)
+	{
+		items = Stream.concat(
+			Stream.concat(Arrays.stream(adults), Arrays.stream(children)),
+			Stream.<MenuItem>of(new SpecialMenu("child", children), new SpecialMenu("adult", adults))).toArray(MenuItem[]::new);
+	}
+
+	public void printItem(String name, Printer printer)
+	{
+		for(MenuItem item : items)
 		{
-			if(symbols.next() != otherSymbols.next()) return false;
+			if(item.isName(name))
+			{
+				item.print(printer);
+				break;
+			}
 		}
-		return symbols.hasNext() == otherSymbols.hasNext();
-	}
-}
-
-class BufferedSymbolIterator implements SymbolIterator
-{
-	private char[] buffer;
-	private int position;
-
-	public BufferedSymbolIterator(char[] buffer)
-	{
-		this.buffer = buffer;
-	}
-
-	@Override
-	public boolean hasNext()
-	{
-		return position < buffer.length;
-	}
-
-	@Override
-	public char next()
-	{
-		return buffer[position++];
-	}
-
-	public void reset()
-	{
-		position = 0;
-	}
-}
-
-class NumericPhone implements Phone
-{
-	private char[] symbols;
-
-	public NumericPhone(int number)
-	{
-		symbols = String.valueOf(number).toCharArray();
-	}
-
-	@Override
-	public SymbolIterator symbols()
-	{
-		return new BufferedSymbolIterator(symbols);
-	}
-
-	@Override
-	public void print(Printer printer)
-	{
-		for(int i = 0; i < symbols.length; i++) printer.print(symbols[i]);
-	}
-}
-
-class SeparatedPhone implements Phone
-{
-	private char[] symbols;
-	private String source;
-
-	public SeparatedPhone(String source, char separator)
-	{
-		this.source = source;
-		Character[] symbols = Arrays.stream(source.split("\\" + Character.toString(separator))).<Character>flatMap(s ->
-		{
-			char[] chars = s.toCharArray();
-			return IntStream.range(0, chars.length).boxed().map(i -> Character.valueOf(chars[i]));
-		}).toArray(Character[]::new);
-		this.symbols = new char[symbols.length];
-		for(int i = 0; i < symbols.length; i++) this.symbols[i] = symbols[i];
-	}
-	@Override
-	public SymbolIterator symbols()
-	{
-		return new BufferedSymbolIterator(symbols);
-	}
-	@Override
-	public void print(Printer printer)
-	{
-		for(int i = 0; i < source.length(); i++) printer.print(source.charAt(i));
-	}
-}
-
-class StringPhone implements Phone
-{
-	private char[] symbols;
-
-	public StringPhone(String source)
-	{
-		symbols = source.toCharArray();
-	}
-
-	@Override
-	public SymbolIterator symbols()
-	{
-		return new BufferedSymbolIterator(symbols);
-	}
-
-	@Override
-	public void print(Printer printer)
-	{
-		for(int i = 0; i < symbols.length; i++) printer.print(symbols[i]);
 	}
 }
 
@@ -134,29 +161,28 @@ public class Program
 {
 	public static void main(String[] args) throws Exception
 	{
-		Phone[] phones =
-		{
-			new NumericPhone(911),
-			new SeparatedPhone("9-11", '-'),
-			new SeparatedPhone("9-1-1", '-'),
-			new SeparatedPhone("9+11", '+'),
-			new SeparatedPhone("9+1-1", '-'),
-			new StringPhone("9+11"),
-			new StringPhone("911A"),
-			new SeparatedPhone("9-1-2", '-')
-		};
+		String input;
+		Scanner scanner = new Scanner(System.in);
+		input = scanner.nextLine();
+		scanner.close();
 
-		for(int i = 0; i < phones.length; i++)
-		{
-			for(int j = i; j < phones.length; j++)
+		new SeparatedMenu(
+			new MenuItem[]
 			{
-				Phone a = phones[i];
-				Phone b = phones[j];
-				a.print(System.out::print);
-				System.out.print(" == ");
-				b.print(System.out::print);
-				System.out.println(" ? " + a.compare(b));
+				new FoodItem("Chicken", 300, 2500, 50),
+				new DrinkItem("Tea", 150, 200, 10),
+				new MusicItem("House on fire", "Sia", 1.5f),
+			},
+			new MenuItem[]
+			{
+				new FoodItem("Small chicken", 150, 1000, 30),
+				new DrinkItem("Milk", 100, 250, 5),
+				new MusicItem("Goodbye moonmen", "Unknown author", 2.5f),
 			}
-		}
+		).printItem(input, () ->
+		{
+			System.out.println();
+			return System.out::println;
+		});
 	}
 }
